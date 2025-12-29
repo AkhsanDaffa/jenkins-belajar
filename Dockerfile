@@ -1,2 +1,2 @@
 FROM alpine
-CMD echo "Halo! Aplikasi ini didownload dan build otomatis Jenskins"
+CMD echo "Halo! Ini trigger via WEBHOOK Real-time!"
