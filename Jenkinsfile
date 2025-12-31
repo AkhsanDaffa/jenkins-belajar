@@ -1,15 +1,28 @@
 pipeline {
     agent any
+
+    environment {
+        REGISTRY_URL = '103.181.142.253:5026'
+        IMAGE_NAME   = 'app-github:v1'
+    }
+
     stages {
-        stage('Build dari GitHub') {
+        stage('Build Image') {
             steps {
-                echo 'Sedang memproses code dari GitHub...'
-                sh 'docker build -t app-github:v1 .'
+                echo '=== BUILDING IMAGE ==='
+                sh 'docker build -t ${REGISTRY_URL}/${IMAGE_NAME} .'
             }
         }
-        stage('Jalankan Test') {
+        stage('Test Run') {
             steps {
-                sh 'docker run --rm app-github:v1'
+                sh 'docker run --rm ${REGISTRY_URL}/${IMAGE_NAME}'
+            }
+        }
+
+        stage('Push to VPS') {
+            steps {
+                echo '=== UPLOADING TO VPS ==='
+                sh 'docker push ${REGISTRY_URL}/${IMAGE_NAME}'
             }
         }
     }
@@ -17,9 +30,8 @@ pipeline {
     post {
         always {
             script {
-                echo '=== MEMBERSIHKAN SAMPAH ==='
-                sh 'docker rmi app-github:v1'
-
+                echo '=== BERSIH-BERSIH ==='
+                sh 'docker rmi ${REGISTRY_URL}/${IMAGE_NAME} || true'
                 sh 'docker image prune -f'
             }
         }
