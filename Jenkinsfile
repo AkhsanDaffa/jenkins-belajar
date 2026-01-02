@@ -41,7 +41,7 @@ pipeline {
                             
                             echo "--- 4. Jalankan Website Baru ---"
                             # Kita jalankan di Port 80 biar bisa akses langsung tanpa ketik port
-                            docker run -d --name ${CONTAINER_NAME} -p 80:80 ${REGISTRY_URL}/${IMAGE_NAME}
+                            docker run -d --name ${CONTAINER_NAME} -p 8081:80 ${REGISTRY_URL}/${IMAGE_NAME}
                         """
 
                         sh "ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@${VPS_IP} '${remoteCmd}'"
