@@ -1,2 +1,3 @@
-FROM alpine
-CMD echo "Halo! Ini trigger via WEBHOOK Real-time!"
+FROM nginx:alpine
+
+COPY index.html /usr/share/nginx/html/index.html
