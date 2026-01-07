@@ -2,61 +2,35 @@ pipeline {
     agent any
 
     environment {
-        VPS_IP       = '103.181.142.253'
-        REGISTRY_URL = '103.181.142.253:5026'
-        IMAGE_NAME   = 'app-github:v1'
-        CONTAINER_NAME = 'website-saya'
+        // Ini adalah path DI DALAM container Jenkins
+        // Yang sudah kita hubungkan ke folder Pi
+        DEPLOY_DIR = '/var/project-kantor'
     }
 
     stages {
-        stage('Build Image') {
+        stage('Deploy to Raspberry Pi') {
             steps {
-                echo '=== BUILDING IMAGE ==='
-                sh 'docker build -t ${REGISTRY_URL}/${IMAGE_NAME} .'
-            }
-        }
-
-        stage('Push to VPS Registry') {
-            steps {
-                echo '=== UPLOADING TO VPS ==='
-                sh "docker push ${REGISTRY_URL}/${IMAGE_NAME}"
-            }
-        }
-
-        stage('Deploy to Production') {
-            steps {
-                echo '=== DEPLOYING TO LIVE SERVER ==='
-                withCredentials([sshUserPrivateKey(credentialsId: 'vps-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
-                    script {
-                        def remoteCmd = """
-                            echo "--- 1. Login ke Registry ---"
-                            # (Opsional karena insecure registry sudah di-whitelist, tapi aman untuk debug)
-                            
-                            echo "--- 2. Hapus Container Lama ---"
-                            docker stop ${CONTAINER_NAME} || true
-                            docker rm ${CONTAINER_NAME} || true
-                            
-                            echo "--- 3. Pull Image Baru ---"
-                            docker pull ${REGISTRY_URL}/${IMAGE_NAME}
-                            
-                            echo "--- 4. Jalankan Website Baru ---"
-                            # Kita jalankan di Port 80 biar bisa akses langsung tanpa ketik port
-                            docker run -d --name ${CONTAINER_NAME} -p 8081:80 ${REGISTRY_URL}/${IMAGE_NAME}
-                        """
-
-                        sh "ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@${VPS_IP} '${remoteCmd}'"
+                script {
+                    echo "--- 1. Copy File ke Folder Deploy ---"
+                    // Salin semua file dari workspace Jenkins ke folder bersama
+                    // Menggunakan 'rsync' atau 'cp'
+                    sh "cp -r . ${DEPLOY_DIR}"
+                    
+                    echo "--- 2. Eksekusi Docker Compose ---"
+                    // Pindah konteks ke folder tersebut
+                    dir("${DEPLOY_DIR}") {
+                        // Perintah ini akan dijalankan oleh Docker Host (Pi)
+                        // Karena kita share docker.sock
+                        try {
+                            sh 'docker compose down || true'
+                            sh 'docker compose up -d --build --force-recreate'
+                            sh 'docker compose ps'
+                        } catch (Exception e) {
+                            echo "Error saat deploy: ${e.getMessage()}"
+                            currentBuild.result = 'FAILURE'
+                        }
                     }
                 }
-            }
-        }
-    }
-
-    post {
-        always {
-            script {
-                echo '=== BERSIH-BERSIH ==='
-                sh 'docker rmi ${REGISTRY_URL}/${IMAGE_NAME} || true'
-                sh 'docker image prune -f'
             }
         }
     }
