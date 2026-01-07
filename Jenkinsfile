@@ -2,33 +2,39 @@ pipeline {
     agent any
 
     environment {
-        // Ini adalah path DI DALAM container Jenkins
-        // Yang sudah kita hubungkan ke folder Pi
+        // Path folder "Bersama" di dalam container Jenkins
+        // Pastikan ini sesuai dengan volume mapping di docker-compose.yml Anda
         DEPLOY_DIR = '/var/project-kantor'
     }
 
     stages {
+        // Tahap 1: Approval (Opsional, biar sama kayak flow kemarin)
+        stage('Manual Approval') {
+            steps {
+                script {
+                    timeout(time: 1, unit: 'HOURS') {
+                        input message: 'Deploy ke Raspberry Pi?', ok: 'Gas!'
+                    }
+                }
+            }
+        }
+
+        // Tahap 2: Deploy Lokal
         stage('Deploy to Raspberry Pi') {
             steps {
                 script {
-                    echo "--- 1. Copy File ke Folder Deploy ---"
-                    // Salin semua file dari workspace Jenkins ke folder bersama
-                    // Menggunakan 'rsync' atau 'cp'
+                    echo "--- 1. Copy File dari Workspace ke Folder Project ---"
+                    // Menyalin file kodingan terbaru ke folder yang dimounting ke Pi
                     sh "cp -r . ${DEPLOY_DIR}"
                     
                     echo "--- 2. Eksekusi Docker Compose ---"
-                    // Pindah konteks ke folder tersebut
+                    // Masuk ke folder itu, lalu perintahkan Docker
                     dir("${DEPLOY_DIR}") {
-                        // Perintah ini akan dijalankan oleh Docker Host (Pi)
-                        // Karena kita share docker.sock
-                        try {
-                            sh 'docker compose down || true'
-                            sh 'docker compose up -d --build --force-recreate'
-                            sh 'docker compose ps'
-                        } catch (Exception e) {
-                            echo "Error saat deploy: ${e.getMessage()}"
-                            currentBuild.result = 'FAILURE'
-                        }
+                        // Matikan container lama & nyalakan yang baru
+                        // '|| true' agar tidak error kalau container belum ada
+                        sh 'docker compose down || true' 
+                        sh 'docker compose up -d --build --force-recreate'
+                        sh 'docker compose ps'
                     }
                 }
             }
