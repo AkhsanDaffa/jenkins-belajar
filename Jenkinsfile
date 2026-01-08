@@ -13,7 +13,7 @@ pipeline {
             steps {
                 script {
                     timeout(time: 1, unit: 'HOURS') {
-                        input message: 'Deploy ke Raspberry Pi?', ok: 'Gas!'
+                        input message: 'Deploy ke Raspberry Pi?', ok: 'Gas! Ok'
                     }
                 }
             }
