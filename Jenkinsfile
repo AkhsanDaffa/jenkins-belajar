@@ -2,47 +2,45 @@ pipeline {
     agent any
 
     environment {
-        // IP Raspberry Pi dan Port Registry (Sesuai yang anda berhasil push tadi)
-        REGISTRY_IP = '100.118.31.124:2612' 
-        IMAGE_NAME  = 'web-kantor'
-        TAG         = 'v-test' // Nanti bisa kita bikin otomatis, sekarang hardcode dulu
-        
-        // Nama Container Website yang akan jalan
-        CONTAINER_NAME = 'website-kantor-production'
-        APP_PORT       = '8090' // Port website yang bisa dibuka di browser
+        // IP Raspberry Pi & Port Registry Anda
+        REGISTRY_URL   = '100.118.31.124:2612' 
+        IMAGE_NAME     = 'web-kantor'
+        CONTAINER_NAME = 'web-production'
+        APP_PORT       = '8090'
     }
 
     stages {
-        stage('Deploy from Local Registry') {
+        stage('Set Dynamic Version') {
             steps {
                 script {
-                    echo "--- 1. Pull Image dari Gudang Lokal ---"
-                    // Jenkins menarik image dari Registry yang ada di sebelahnya
-                    sh "docker pull ${REGISTRY_IP}/${IMAGE_NAME}:${TAG}"
+                    // MENGAMBIL 7 DIGIT PERTAMA DARI GIT COMMIT HASH
+                    // Contoh hasil: "a1b2c3d"
+                    env.GIT_TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     
-                    echo "--- 2. Bersihkan Container Lama ---"
-                    // Hapus container lama biar tidak bentrok nama
-                    // '|| true' agar tidak error kalau ini deployment pertama
+                    echo "--- Deployment untuk Versi: ${env.GIT_TAG} ---"
+                }
+            }
+        }
+
+        stage('Deploy from Registry') {
+            steps {
+                script {
+                    // Menggunakan variabel ${GIT_TAG} yang didapat di stage sebelumnya
+                    echo "--- 1. Pull Image: ${IMAGE_NAME}:${GIT_TAG} ---"
+                    sh "docker pull ${REGISTRY_URL}/${IMAGE_NAME}:${GIT_TAG}"
+                    
+                    echo "--- 2. Cleanup Old Container ---"
                     sh "docker rm -f ${CONTAINER_NAME} || true"
                     
-                    echo "--- 3. Jalankan Website ---"
-                    // Run container baru menggunakan image dari registry lokal
+                    echo "--- 3. Run New Container ---"
                     sh """
                         docker run -d \
                         --name ${CONTAINER_NAME} \
                         -p ${APP_PORT}:80 \
                         --restart always \
-                        ${REGISTRY_IP}/${IMAGE_NAME}:${TAG}
+                        ${REGISTRY_URL}/${IMAGE_NAME}:${GIT_TAG}
                     """
                 }
-            }
-        }
-        
-        stage('Health Check') {
-            steps {
-                // Pastikan container benar-benar hidup
-                sh "docker ps | grep ${CONTAINER_NAME}"
-                echo "Website berhasil dideploy di port ${APP_PORT}!"
             }
         }
     }
