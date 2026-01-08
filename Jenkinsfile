@@ -2,41 +2,47 @@ pipeline {
     agent any
 
     environment {
-        // Path folder "Bersama" di dalam container Jenkins
-        // Pastikan ini sesuai dengan volume mapping di docker-compose.yml Anda
-        DEPLOY_DIR = '/var/project-kantor'
+        // IP Raspberry Pi dan Port Registry (Sesuai yang anda berhasil push tadi)
+        REGISTRY_IP = '100.118.31.124:2612' 
+        IMAGE_NAME  = 'web-kantor'
+        TAG         = 'v-test' // Nanti bisa kita bikin otomatis, sekarang hardcode dulu
+        
+        // Nama Container Website yang akan jalan
+        CONTAINER_NAME = 'website-kantor-production'
+        APP_PORT       = '8090' // Port website yang bisa dibuka di browser
     }
 
     stages {
-        // Tahap 1: Approval (Opsional, biar sama kayak flow kemarin)
-        stage('Manual Approval') {
+        stage('Deploy from Local Registry') {
             steps {
                 script {
-                    timeout(time: 1, unit: 'HOURS') {
-                        input message: 'Deploy ke Raspberry Pi?', ok: 'Gas! Mantap'
-                    }
+                    echo "--- 1. Pull Image dari Gudang Lokal ---"
+                    // Jenkins menarik image dari Registry yang ada di sebelahnya
+                    sh "docker pull ${REGISTRY_IP}/${IMAGE_NAME}:${TAG}"
+                    
+                    echo "--- 2. Bersihkan Container Lama ---"
+                    // Hapus container lama biar tidak bentrok nama
+                    // '|| true' agar tidak error kalau ini deployment pertama
+                    sh "docker rm -f ${CONTAINER_NAME} || true"
+                    
+                    echo "--- 3. Jalankan Website ---"
+                    // Run container baru menggunakan image dari registry lokal
+                    sh """
+                        docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        -p ${APP_PORT}:80 \
+                        --restart always \
+                        ${REGISTRY_IP}/${IMAGE_NAME}:${TAG}
+                    """
                 }
             }
         }
-
-        // Tahap 2: Deploy Lokal
-        stage('Deploy to Raspberry Pi') {
+        
+        stage('Health Check') {
             steps {
-                script {
-                    echo "--- 1. Copy File dari Workspace ke Folder Project ---"
-                    // Menyalin file kodingan terbaru ke folder yang dimounting ke Pi
-                    sh "cp -r . ${DEPLOY_DIR}"
-                    
-                    echo "--- 2. Eksekusi Docker Compose ---"
-                    // Masuk ke folder itu, lalu perintahkan Docker
-                    dir("${DEPLOY_DIR}") {
-                        // Matikan container lama & nyalakan yang baru
-                        // '|| true' agar tidak error kalau container belum ada
-                        sh 'docker compose down || true' 
-                        sh 'docker compose up -d --build --force-recreate'
-                        sh 'docker compose ps'
-                    }
-                }
+                // Pastikan container benar-benar hidup
+                sh "docker ps | grep ${CONTAINER_NAME}"
+                echo "Website berhasil dideploy di port ${APP_PORT}!"
             }
         }
     }
