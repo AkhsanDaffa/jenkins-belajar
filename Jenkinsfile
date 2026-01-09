@@ -21,7 +21,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Set Dynamic Version') {
             steps {
                 script {
@@ -37,7 +37,7 @@ pipeline {
                 script {
                     // Menggunakan variabel ${GIT_TAG} yang didapat di stage sebelumnya
                     echo "--- 1. Pull Image: ${IMAGE_NAME}:${GIT_TAG} ---"
-                    sh "docker pull_ngawur ${REGISTRY_URL}/${IMAGE_NAME}:${GIT_TAG}"
+                    sh "docker pull ${REGISTRY_URL}/${IMAGE_NAME}:${GIT_TAG}"
                     
                     echo "--- 2. Cleanup Old Container ---"
                     sh "docker rm -f ${CONTAINER_NAME} || true"
