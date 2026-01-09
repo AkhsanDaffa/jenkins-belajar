@@ -8,11 +8,17 @@
 ![Trivy](https://img.shields.io/badge/Security-Trivy-blue?style=for-the-badge)
 
 ## 📋 Project Overview
-This project demonstrates a complete **End-to-End DevSecOps Pipeline** built on limited resources (Raspberry Pi). It automates the deployment of a web application while ensuring code quality and security standards are met before production.
 
-The system features **Automated Testing**, **Vulnerability Scanning**, **Zero-Touch Maintenance**, and **Interactive Rollback Capabilities**.
+This project demonstrates a complete **End-to-End DevSecOps Pipeline** built on **limited hardware resources (Raspberry Pi ARM64)**.
 
----
+The pipeline automates:
+- Application build & deployment
+- Quality validation
+- Container security scanning
+- Zero-touch maintenance
+- Interactive rollback for production safety
+
+All processes run **fully automated** with real-time notifications via **Discord Webhook**.
 
 ## 🏗️ Architecture Workflow
 
@@ -20,53 +26,101 @@ The system features **Automated Testing**, **Vulnerability Scanning**, **Zero-To
 graph TD
     User[Developer] -->|Push Code| Github
     User -->|Build & Push Image| Registry[Local Docker Registry]
-    
+
     subgraph "Raspberry Pi Server (Jenkins)"
-        Github -->|Trigger Webhook| Pipeline
-        Pipeline -->|1. Quality Control| Test[Bash Script Validations]
-        Test -->|2. Security Scan| Trivy[Trivy Vuln Scanner]
-        Trivy -->|3. Deploy| Prod[Production Container]
-        
-        Cron[Weekly Maintenance Job] -->|Clean Garbage| DockerSystem
+        Github -->|Trigger Webhook| Pipeline[Jenkins Pipeline]
+        Pipeline -->|1. Quality Control| Test[Bash Script Validation]
+        Test -->|2. Security Scan| Trivy[Trivy Vulnerability Scanner]
+        Trivy -->|3. Deploy| Prod[Production Container (Nginx)]
+        Cron[Weekly Maintenance Job] -->|Clean Garbage| DockerSystem[Docker System Prune]
     end
-    
-    Pipeline -->|Notify Status| Discord
-    Cron -->|Notify Cleanup| Discord
 
-🛠️ Key Features
-1. 🛡️ DevSecOps Integration (Trivy)
-Security is not an afterthought. Every image is scanned for vulnerabilities (CVEs) before deployment using AquaSec Trivy.
+    Pipeline -->|Build Status| Discord[Discord Webhook]
+    Cron -->|Cleanup Report| Discord
+```
 
-Policy: The pipeline automatically FAILS if CRITICAL or HIGH vulnerabilities are detected.
 
-Optimization: Runs efficiently on ARM64 architecture with cached DB.
+## 🛠️ Key Features
 
-2. 🕹️ Parameterized Build & Rollback
-Interactive Jenkins menu allowing total control over the environment:
+### 🛡️ 1. DevSecOps Integration (Trivy)
 
-Deploy Latest: Automatically pulls git hash and deploys.
+Security is **not an afterthought**.
 
-Rollback: Emergency feature to revert to a specific Git Commit Hash if bugs are found in production.
+- Every Docker image is scanned using **Aqua Security Trivy**
+- The pipeline **FAILS automatically** if:
+  - `CRITICAL` or `HIGH` vulnerabilities are detected
+- Optimized for **ARM64 (Raspberry Pi)** using cached vulnerability database
 
-3. 🧹 Automated Self-Healing (Cron)
-A dedicated "Janitor" job runs every Sunday at 4:00 AM to prevent storage overflow on the Raspberry Pi.
+### 🕹️ 2. Parameterized Build & Rollback
 
-Action: Prunes unused Docker images, volumes, and build cache.
+Interactive Jenkins pipeline using **Build with Parameters**:
 
-Result: Maintains system stability and longevity of the SD Card.
+- **Deploy Latest**
+  - Automatically builds and deploys from the latest Git commit
+- **Rollback**
+  - Instantly revert production to a specific **Git Commit Hash**
+  - Designed for emergency recovery when bugs reach production
 
-4. 🔔 Real-time Monitoring (Discord)
-Integrated with Discord Webhooks to provide instant feedback.
+### 🧹 3. Automated Self-Healing (Cron Job)
 
-Success: Green notification with version ID and Website Link.
+A dedicated **Janitor Job** runs automatically:
 
-Failure: Red alert with error logs (Security breach or Test failure).
+- 🕓 **Schedule**: Every Sunday at 04:00 AM
+- 🧽 **Actions**:
+  - Prune unused Docker images
+  - Remove dangling volumes
+  - Clear Docker build cache
+- 🎯 **Result**:
+  - Prevents storage overflow
+  - Extends SD Card lifespan
+  - Maintains Raspberry Pi stability
 
-🔧 Tech Stack
-Component,Technology,Description
-Orchestrator,Jenkins,Managing pipelines and workflows
-Containerization,Docker,"Hosting Registry, Jenkins, and App"
-Security,Trivy,Vulnerability Scanner for Containers
-WebServer,Nginx Alpine,Lightweight production server
-Notifications,Discord API,Webhook for build status updates
-Hardware,Raspberry Pi 4,ARM64 Server Infrastructure
+
+### 🔔 4. Real-time Monitoring (Discord)
+
+Integrated **Discord Webhook notifications**:
+
+- ✅ **Success Notification**
+  - Build status
+  - Deployed version (Git commit hash)
+  - Production website URL
+- ❌ **Failure Notification**
+  - Quality check failures
+  - Security vulnerabilities detected
+  - Pipeline execution errors
+
+## 🔧 Tech Stack
+
+| Component        | Technology      | Description                                   |
+|------------------|----------------|-----------------------------------------------|
+| Orchestrator     | Jenkins        | CI/CD pipeline & workflow automation          |
+| Containerization | Docker         | Application, Jenkins, and Registry            |
+| Security         | Trivy          | Container vulnerability scanner               |
+| Web Server       | Nginx Alpine   | Lightweight production web server             |
+| Notifications    | Discord API    | Real-time pipeline notifications              |
+| Hardware         | Raspberry Pi 4 | ARM64 server infrastructure                   |
+
+## 📸 Screenshots (Evidence)
+
+1. **Pipeline Success (Green Build)**  
+   _Place Jenkins pipeline success screenshot here_
+
+2. **Interactive Rollback Menu**  
+   _Place "Build with Parameters" screenshot here_
+
+3. **Security Scanning & Discord Alerts**  
+   _Place Trivy scan output & Discord notification screenshot here_
+
+## 📝 Usage
+
+### 🚀 Deployment Command
+
+```bash
+./deploy.sh "Your commit message here"
+./test_quality.sh
+```
+
+## Author
+
+Created by **Akhsan Daffa**  
+ARM64 • Raspberry Pi • DevSecOps • Automation
