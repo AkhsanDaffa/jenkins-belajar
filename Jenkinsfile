@@ -12,6 +12,16 @@ pipeline {
     }
 
     stages {
+        stage('Quality Control') {
+            steps {
+                script {
+                    echo "--- 🛡️ Menjalankan Automated Test ---"
+                    // Jenkins menjalankan script test yang kita buat tadi
+                    sh "./test_quality.sh"
+                }
+            }
+        }
+        
         stage('Set Dynamic Version') {
             steps {
                 script {
