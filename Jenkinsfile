@@ -1,34 +1,29 @@
 pipeline {
     agent any
 
-    // --- MENU RESTORAN (PARAMETER) ---
     parameters {
         choice(name: 'ACTION', choices: ['Deploy Update Terbaru', 'Rollback ke Versi Lama'], description: 'Pilih aksi yang mau dilakukan:')
         string(name: 'SPECIFIC_VERSION', defaultValue: '', description: 'KOSONGKAN jika Update Terbaru. ISI Hash Commit jika mau Rollback (Contoh: e47d9c6)')
     }
 
     environment {
-        // --- KONFIGURASI SERVER ---
         REGISTRY_URL   = '100.118.31.124:2612' 
         IMAGE_NAME     = 'web-kantor'
         CONTAINER_NAME = 'web-production'
         APP_PORT       = '8090'
         
-        // --- GANTI DENGAN URL DISCORD ANDA ---
-        DISCORD_URL    = 'https://discord.com/api/webhooks/YOUR_WEBHOOK_URL_HERE' 
+        // PASTATIKAN URL DISCORD INI BENAR
+        DISCORD_URL    = 'https://discord.com/api/webhooks/1459002890273296559/wUqWc7MlMbKhsplmz0Aeh3OzIxWZ6wP8jyYHjzSqhelImNX9pxl40iyKC_3nbf9BCuJy' 
     }
 
     stages {
-        // STAGE 1: TENTUKAN VERSI (OTOMATIS / MANUAL)
         stage('Setup Version') {
             steps {
                 script {
-                    // Logika: Cek apakah user mau Rollback atau Update
                     if (params.ACTION == 'Rollback ke Versi Lama' && params.SPECIFIC_VERSION != '') {
                         env.GIT_TAG = params.SPECIFIC_VERSION
                         echo "⏪ MODE ROLLBACK: Menggunakan versi lama -> ${env.GIT_TAG}"
                     } else {
-                        // Default: Ambil versi terbaru dari Git
                         env.GIT_TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                         echo "🚀 MODE UPDATE: Menggunakan versi terbaru -> ${env.GIT_TAG}"
                     }
@@ -36,7 +31,6 @@ pipeline {
             }
         }
 
-        // STAGE 2: TEST KODINGAN
         stage('Quality Control') {
             steps {
                 script {
@@ -46,13 +40,12 @@ pipeline {
             }
         }
 
-        // STAGE 3: SECURITY SCAN
         stage('Security Scan') {
             steps {
                 script {
                     echo "--- 👮 2. Cek Virus & Celah Keamanan ---"
-                    // Skip scan kalau Rollback (biar cepat & karena asumsinya versi lama sudah pernah dicek)
                     if (params.ACTION == 'Deploy Update Terbaru') {
+                        // Menggunakan timeout agar tidak hang
                         sh "docker run --rm aquasec/trivy image --timeout 20m --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed --insecure ${REGISTRY_URL}/${IMAGE_NAME}:${env.GIT_TAG}"
                     } else {
                         echo "⏩ Skip Security Scan untuk Rollback."
@@ -61,16 +54,15 @@ pipeline {
             }
         }
 
-        // STAGE 4: DEPLOYMENT
         stage('Deploy from Registry') {
             steps {
                 script {
                     echo "--- 🚚 3. Deployment Dimulai (${env.GIT_TAG}) ---"
                     
-                    // Tarik image (penting untuk rollback jika image lokal sudah terhapus)
+                    // Pull image dulu untuk memastikan file ada (terutama saat rollback)
                     sh "docker pull ${REGISTRY_URL}/${IMAGE_NAME}:${env.GIT_TAG}"
                     
-                    // Hapus container lama
+                    // Hapus container lama jika ada
                     sh "docker rm -f ${CONTAINER_NAME} || true"
                     
                     // Jalankan container baru
@@ -86,7 +78,6 @@ pipeline {
         }
     }
 
-    // STAGE 5: NOTIFIKASI
     post {
         success {
             script {
@@ -97,7 +88,7 @@ pipeline {
                             title: "🚀 Misi Selesai", 
                             webhookURL: env.DISCORD_URL
                 
-                // Bersih-bersih image sampah
+                // Bersihkan image sampah agar hemat storage
                 sh "docker image prune -f"
             }
         }
