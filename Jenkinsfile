@@ -36,9 +36,7 @@ pipeline {
             steps {
                 script {
                     echo "--- 👮 Cek Virus & Celah Keamanan ---"
-                    // Scan image yang ada di registry
-                    // Kita pakai --insecure karena registry lokal (HTTP)
-                    sh "trivy image --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed --insecure ${REGISTRY_URL}/${IMAGE_NAME}:${env.GIT_TAG}"
+                    sh "docker run --rm aquasec/trivy image --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed --insecure ${REGISTRY_URL}/${IMAGE_NAME}:${env.GIT_TAG}"
                 }
             }
         }
