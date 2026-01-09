@@ -24,19 +24,19 @@ All processes run **fully automated** with real-time notifications via **Discord
 
 ```mermaid
 graph TD
-    User[Developer] -->|Push Code| Github
-    User -->|Build & Push Image| Registry[Local Docker Registry]
+    User[Developer] --> Github
+    User --> Registry[Local_Docker_Registry]
 
-    subgraph "Raspberry Pi Server (Jenkins)"
-        Github -->|Trigger Webhook| Pipeline[Jenkins Pipeline]
-        Pipeline -->|1. Quality Control| Test[Bash Script Validation]
-        Test -->|2. Security Scan| Trivy[Trivy Vulnerability Scanner]
-        Trivy -->|3. Deploy| Prod[Production Container (Nginx)]
-        Cron[Weekly Maintenance Job] -->|Clean Garbage| DockerSystem[Docker System Prune]
+    subgraph Raspberry_Pi_Jenkins
+        Github --> Pipeline[Jenkins_Pipeline]
+        Pipeline --> Test[Quality_Check]
+        Test --> Trivy[Security_Scan]
+        Trivy --> Prod[Production_Container]
+        Cron[Weekly_Cron] --> DockerSystem[Docker_Prune]
     end
 
-    Pipeline -->|Build Status| Discord[Discord Webhook]
-    Cron -->|Cleanup Report| Discord
+Pipeline --> Discord[Discord_Webhook]
+Cron --> Discord
 ```
 
 
