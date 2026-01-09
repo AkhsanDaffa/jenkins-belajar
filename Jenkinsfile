@@ -33,7 +33,6 @@ pipeline {
             }
         }
 
-    stages {
         stage('Quality Control') {
             steps {
                 script {
@@ -113,5 +112,4 @@ pipeline {
             }
         }
     }
-}
 }
