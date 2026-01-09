@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ACTION', choices: ['Deploy Update Terbaru', 'Rollback ke Versi Lama'], description: 'Mau Deploy atau Rollback?')
+        string(name: 'SPECIFIC_VERSION', defaultValue: '', description: 'KOSONGKAN jika Deploy Update Terbaru. ISI Hash Commit jika mau Rollback (Contoh: e47d9c6)')
+    }
+
     environment {
         // IP Raspberry Pi & Port Registry Anda
         REGISTRY_URL   = '100.118.31.124:2612' 
@@ -10,6 +15,23 @@ pipeline {
 
         DISCORD_URL    = 'https://discord.com/api/webhooks/1459002890273296559/wUqWc7MlMbKhsplmz0Aeh3OzIxWZ6wP8jyYHjzSqhelImNX9pxl40iyKC_3nbf9BCuJy'
     }
+
+    stages {
+        stage('Setup Version') {
+            steps {
+                script {
+                    // Logika Canggih: Pilih Versi Otomatis atau Manual
+                    if (params.ACTION == 'Rollback ke Versi Lama' && params.SPECIFIC_VERSION != '') {
+                        env.GIT_TAG = params.SPECIFIC_VERSION
+                        echo "⏪ MODE ROLLBACK: Menggunakan versi lama -> ${env.GIT_TAG}"
+                    } else {
+                        // Ambil versi terbaru dari Git
+                        env.GIT_TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                        echo "🚀 MODE UPDATE: Menggunakan versi terbaru -> ${env.GIT_TAG}"
+                    }
+                }
+            }
+        }
 
     stages {
         stage('Quality Control') {
