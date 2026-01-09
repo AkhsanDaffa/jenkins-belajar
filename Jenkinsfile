@@ -7,14 +7,14 @@ pipeline {
         IMAGE_NAME     = 'web-kantor'
         CONTAINER_NAME = 'web-production'
         APP_PORT       = '8090'
+
+        DISCORD_URL    = 'https://discord.com/api/webhooks/1459002890273296559/wUqWc7MlMbKhsplmz0Aeh3OzIxWZ6wP8jyYHjzSqhelImNX9pxl40iyKC_3nbf9BCuJy'
     }
 
     stages {
         stage('Set Dynamic Version') {
             steps {
                 script {
-                    // MENGAMBIL 7 DIGIT PERTAMA DARI GIT COMMIT HASH
-                    // Contoh hasil: "a1b2c3d"
                     env.GIT_TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     
                     echo "--- Deployment untuk Versi: ${env.GIT_TAG} ---"
@@ -41,6 +41,34 @@ pipeline {
                         ${REGISTRY_URL}/${IMAGE_NAME}:${GIT_TAG}
                     """
                 }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                // 1. Kirim Laporan Sukses ke Discord
+                discordSend description: "✅ **Deploy Berhasil!**\nVersi: `${env.GIT_TAG}`\nWebsite: http://100.118.31.124:${APP_PORT}", 
+                            footer: "Jenkins Raspberry Pi", 
+                            link: env.BUILD_URL, 
+                            result: currentBuild.currentResult, 
+                            title: "🚀 Deployment Sukses: ${env.JOB_NAME}", 
+                            webhookURL: env.DISCORD_URL
+
+                // 2. Bersih-bersih (Maintenance)
+                sh "docker image prune -f"
+            }
+        }
+        failure {
+            script {
+                // Kirim Laporan Gagal (PENTING BIAR TAHU ERROR)
+                discordSend description: "❌ **Deploy GAGAL!**\nMohon cek log console segera.", 
+                            footer: "Jenkins Raspberry Pi", 
+                            link: env.BUILD_URL, 
+                            result: currentBuild.currentResult, 
+                            title: "🚨 Deployment Error: ${env.JOB_NAME}", 
+                            webhookURL: env.DISCORD_URL
             }
         }
     }
